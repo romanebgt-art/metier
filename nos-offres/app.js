@@ -152,11 +152,80 @@ function rendre() {
   document.getElementById('t-persistantes').innerHTML = `<tr><th>Offre</th><th>Entreprise</th><th>Contrat</th><th>Relevés</th></tr>` +
     pers.map(l => { const o = l[l.length - 1]; return `<tr><td><a href="${esc(o.lien)}" target="_blank" rel="noopener">${esc(o.intitule)}</a></td><td>${esc(o.entreprise)}</td><td>${esc(o.contrat)}</td><td>${[...new Set(l.map(x => dateFr(x.date_collecte)))].join(', ')}</td></tr>`; }).join('');
 
+  rendreFT(F);
+
   // Tableau des offres
   const T = R.filter(o => !F.texte || [o.intitule, o.entreprise, o.lieu, o.secteur].join(' ').toLowerCase().includes(F.texte));
   document.getElementById('compte').textContent = `${T.length} offre${T.length > 1 ? 's' : ''} affichée${T.length > 1 ? 's' : ''}`;
   document.getElementById('t-offres').innerHTML = `<tr><th>Date</th><th>Canal</th><th>Contrat</th><th>Intitulé</th><th>Entreprise</th><th>Lieu</th><th class="n">Salaire</th></tr>` +
     T.map(o => { const m = milieu(o); return `<tr><td>${dateFr(o.date_collecte)}</td><td><span class="pastille">${o.canal === 'Adzuna' ? 'Adzuna' : 'WTTJ'}</span></td><td>${esc(o.contrat)}</td><td><a href="${esc(o.lien)}" target="_blank" rel="noopener">${esc(o.intitule)}</a></td><td>${esc(o.entreprise)}</td><td>${esc(o.lieu)}</td><td class="n">${m == null ? '' : eur(m) + (o.salaire_periode === 'mois' ? '/mois' : '/an')}</td></tr>`; }).join('');
+}
+
+// ---- France Travail : data/resume.json, produit chaque jour par le robot du prof ----
+let FT = null;
+const CLERMONT = /\b63\d{3}\b|clermont|aubi[eè]re|chamali[eè]res|gerzat|cournon|riom|issoire|beaumont|saint-beauzire|pont-du-ch[aâ]teau/i;
+function ftContrat(o) {
+  if (o.nature === 'apprentissage' || o.nature === 'professionnalisation') return 'Alternance';
+  if (o.nature === 'non_salarie') return 'Indépendant (non salarié)';
+  return { CDI: 'CDI', DDI: 'CDI', CDD: 'CDD', MIS: 'Intérim', SAI: 'Saisonnier' }[o.contrat] || o.contrat || 'Non précisé';
+}
+const ftMilieu = o => o.smin == null ? null : o.smax == null ? o.smin : (o.smin + o.smax) / 2;
+const mediane = v => { const s = v.filter(x => x != null).sort((a, b) => a - b), n = s.length; return n ? (n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2) : null; };
+
+function rendreFT(F) {
+  if (!FT) return;
+  const groupes = document.getElementById('f-groupe').value.split(',');
+  const codes = new Set(FT.metiers.filter(m => groupes.includes(m.groupe)).map(m => m.code));
+  const X = FT.offres.filter(o => codes.has(o.rome));
+  document.getElementById('ft-sous').innerHTML = `Offres actives sur France Travail le <b>${dateFr(FT.date)}/${FT.date.slice(0, 4)}</b>, pour ${codes.size} métiers suivis par le prof : <b>${nf(X.length)}</b> offres. Elles se mettent à jour à chaque « Sync fork ».`;
+
+  // Nos colonnes : offres retenues de la date choisie (le filtre canal et contrat ne s'applique pas ici).
+  const quand = F.date ? `le ${dateFr(F.date)}` : 'tous relevés';
+  const col = c => {
+    const R = RET.filter(o => o.canal === c && (!F.date || o.date_collecte === F.date));
+    const E = ECA.filter(o => o.canal === c && (!F.date || o.date_collecte === F.date));
+    const tot = R.length + E.length;
+    return { n: R.length, rel: tot, connu: pct(tot - E.filter(inconnu).length, tot),
+      sal: pct(R.filter(o => milieu(o) != null).length, R.length),
+      medCDI: mediane(R.filter(o => o.contrat === 'CDI').map(milieu)), nCDI: R.filter(o => o.contrat === 'CDI' && milieu(o) != null).length,
+      cdi: pct(R.filter(o => o.contrat === 'CDI').length, R.length), alt: pct(R.filter(o => o.contrat === 'Alternance').length, R.length),
+      stage: pct(R.filter(o => o.contrat === 'Stage').length, R.length),
+      paris: pct(R.filter(o => ville(o.lieu) === 'Paris').length, R.length), pdd: R.filter(o => CLERMONT.test(o.lieu)).length };
+  };
+  const cdiFT = X.filter(o => ftContrat(o) === 'CDI');
+  const ft = { n: X.length, rel: X.length, connu: pct(X.filter(o => o.contrat).length, X.length), sal: pct(X.filter(o => o.smin != null).length, X.length),
+    medCDI: mediane(cdiFT.map(ftMilieu)), nCDI: cdiFT.filter(o => o.smin != null).length,
+    cdi: pct(cdiFT.length, X.length), alt: pct(X.filter(o => ftContrat(o) === 'Alternance').length, X.length),
+    stage: 0, paris: pct(X.filter(o => o.dep === '75').length, X.length), pdd: X.filter(o => o.dep === '63').length };
+  const w = col('Welcome to the Jungle'), a = col('Adzuna');
+  const lignes = [
+    ['Offres analysées', c => nf(c.n)],
+    ['Contrat indiqué', c => c.connu + ' %'],
+    ['Salaire affiché', c => c.sal + ' %'],
+    ['Salaire médian des CDI (brut annuel)', c => c.medCDI == null ? '–' : `${eur(c.medCDI)} <small>(n=${c.nCDI})</small>`],
+    ['Part de CDI', c => c.cdi + ' %'],
+    ['Part d\'alternances', c => c.alt + ' %'],
+    ['Part de stages', c => c.stage + ' %'],
+    ['Part à Paris (75)', c => c.paris + ' %'],
+    ['Offres dans le Puy-de-Dôme', c => nf(c.pdd)],
+  ];
+  document.getElementById('t-comparaison').innerHTML =
+    `<tr><th></th><th class="n">France Travail<br><small>${dateFr(FT.date)}, toutes les offres</small></th><th class="n">Welcome to the Jungle<br><small>${quand}, notre relevé</small></th><th class="n">Adzuna<br><small>${quand}, notre relevé</small></th></tr>` +
+    lignes.map(([t, f]) => `<tr><td>${t}</td><td class="n">${f(ft)}</td><td class="n">${f(w)}</td><td class="n">${f(a)}</td></tr>`).join('');
+  document.getElementById('n-comparaison').innerHTML = `Pour nos canaux, les parts sont calculées sur les offres retenues après nettoyage (sauf « contrat indiqué », calculé sur toutes les offres relevées). Les trois listes Welcome to the Jungle ne montrent chacune qu'un type de contrat : ses parts de CDI, de stages et d'alternances reflètent notre choix de pages, pas le marché. France Travail compte comme alternance les contrats d'apprentissage et de professionnalisation.`;
+
+  const ks = {}; X.forEach(o => { const k = ftContrat(o); ks[k] = (ks[k] || 0) + 1; });
+  const tk = Object.entries(ks).sort((p, q) => q[1] - p[1]);
+  dessiner('g-ft-contrats', { type: 'bar', data: { labels: tk.map(t => t[0]), datasets: [{ data: tk.map(t => t[1]), backgroundColor: css('--vert') }] },
+    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, title: { display: true, text: `Nombre d'offres (total : ${nf(X.length)})` } }, y: { ticks: { autoSkip: false } } } } });
+  const nAlt = ks['Alternance'] || 0;
+  document.getElementById('l-ft-contrats').innerHTML = `Sur France Travail, <b>${pct(cdiFT.length, X.length)} %</b> des offres sont des CDI et <b>${pct(nAlt, X.length)} %</b> des alternances (${nf(nAlt)} offres). Nos relevés n'étant qu'un échantillon (une page par liste), on compare les parts, pas les volumes.`;
+  const kd = {}; X.forEach(o => { if (o.dep) kd[o.dep] = (kd[o.dep] || 0) + 1; });
+  const td = Object.entries(kd).sort((p, q) => q[1] - p[1]).slice(0, 10);
+  dessiner('g-ft-dep', { type: 'bar', data: { labels: td.map(t => 'Dép. ' + t[0]), datasets: [{ data: td.map(t => t[1]), backgroundColor: td.map(t => t[0] === '63' ? css('--orange') : css('--vert')) }] },
+    options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, title: { display: true, text: "Nombre d'offres" } } } } });
+  const r63 = Object.entries(kd).sort((p, q) => q[1] - p[1]).findIndex(t => t[0] === '63') + 1;
+  document.getElementById('l-ft-dep').innerHTML = `Paris (75) concentre <b>${pct(kd['75'] || 0, X.length)} %</b> des offres. Le Puy-de-Dôme (63) en compte <b>${nf(kd['63'] || 0)}</b>${r63 ? `, ${r63}<sup>e</sup> département` : ''}.`;
 }
 
 (async () => {
@@ -172,7 +241,15 @@ function rendre() {
     [...new Set(RET.map(o => o.contrat))].sort().forEach(c => sc.add(new Option(c, c)));
     ['f-date', 'f-canal', 'f-contrat'].forEach(id => document.getElementById(id).addEventListener('change', rendre));
     document.getElementById('f-texte').addEventListener('input', rendre);
+    document.getElementById('f-groupe').addEventListener('change', () => rendreFT(filtres()));
     rendre();
+    // France Travail : chargé après coup, pour que nos données s'affichent tout de suite.
+    try {
+      FT = await (await fetch(`${DATA}resume.json`)).json();
+      rendreFT(filtres());
+    } catch (e) {
+      document.getElementById('ft-sous').textContent = `Données France Travail indisponibles (${e.message}).`;
+    }
   } catch (e) {
     document.getElementById('erreur').innerHTML = `<p class="erreur">Impossible de charger les données : ${esc(e.message)}. Ouvrez la page via GitHub Pages (ou un petit serveur local), pas en double-cliquant sur le fichier.</p>`;
   }

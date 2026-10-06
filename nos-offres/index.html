@@ -16,6 +16,7 @@
     <a href="#salaires">Salaires</a>
     <a href="#lieux">Où</a>
     <a href="#evolution">Évolution</a>
+    <a href="#france-travail">Comparer avec France Travail</a>
     <a href="#offres">Toutes les offres</a>
     <a href="#methode">Méthode et limites</a>
     <a href="../index.html">↗ Site du prof (France Travail)</a>
@@ -66,6 +67,23 @@
     <div class="carte defile"><h3>Offres toujours en ligne d'un relevé à l'autre</h3><table id="t-persistantes"></table></div>
   </div>
 
+  <h2 id="france-travail">Comparer avec France Travail <small>— les données du prof</small></h2>
+  <p class="sous" id="ft-sous">Chargement des données France Travail…</p>
+  <div class="barre">
+    <label>Métiers France Travail <select id="f-groupe">
+      <option value="Marketing,Digital">Marketing + Digital (les plus proches du master)</option>
+      <option value="Marketing">Marketing seulement</option>
+      <option value="Digital">Digital seulement</option>
+      <option value="Marketing,Digital,Frontière">Les 23 métiers suivis par le prof</option>
+    </select></label>
+  </div>
+  <div class="carte defile" style="margin-top:16px"><h3>Les trois canaux côte à côte</h3><table id="t-comparaison"></table>
+    <p class="note" id="n-comparaison"></p></div>
+  <div class="grille" style="margin-top:16px">
+    <div class="carte"><h3>France Travail : type de contrat</h3><div class="zone"><canvas id="g-ft-contrats"></canvas></div><p class="lecture" id="l-ft-contrats"></p></div>
+    <div class="carte"><h3>France Travail : les 10 départements qui ont le plus d'offres</h3><div class="zone"><canvas id="g-ft-dep"></canvas></div><p class="lecture" id="l-ft-dep"></p></div>
+  </div>
+
   <h2 id="offres">Toutes les offres retenues</h2>
   <div class="carte">
     <label>Rechercher <input type="search" id="f-texte" placeholder="intitulé, entreprise, ville…"></label>
@@ -89,10 +107,11 @@
       <li>Le 29/09, seules <b>15 des 20</b> offres de la page CDI ont été relevées (lecture de la page tronquée) : les deux dates ne sont pas parfaitement comparables pour les CDI.</li>
       <li>Adzuna est un agrégateur : il reprend des offres d'autres sites, parfois en double, et son étiquette de contrat est parfois fausse.</li>
       <li>Peu d'offres affichent un salaire : les moyennes reposent sur de petits effectifs (indiqués à chaque fois).</li>
+      <li>La comparaison avec France Travail met face à face <b>toutes</b> les offres actives des métiers suivis par le prof (plusieurs milliers, mises à jour chaque jour par son robot) et <b>nos échantillons</b> de quelques dizaines d'offres : les pourcentages se comparent, pas les volumes.</li>
     </ul>
   </div>
 
-  <footer>Données : <code>data/offres_finales/</code> et <code>data/offres_ecartees/</code> de ce dépôt — une ligne par offre, avec le lien vers l'annonce. Graphiques recalculés dans votre navigateur à partir de ces fichiers.</footer>
+  <footer>Données : <code>data/offres_finales/</code> et <code>data/offres_ecartees/</code> (nos relevés), et <code>data/resume.json</code> (France Travail, collecté chaque jour par le robot du prof, V. Favarin). Graphiques recalculés dans votre navigateur à partir de ces fichiers.</footer>
 </main>
 <script src="app.js"></script>
 </body>
