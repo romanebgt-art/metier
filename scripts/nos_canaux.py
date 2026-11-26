@@ -186,9 +186,14 @@ def ft_salaire(lib, contrat):
 
 
 def france_travail(verifier=False):
-    cid, secret = os.getenv("FT_CLIENT_ID"), os.getenv("FT_CLIENT_SECRET")
+    brut_id, brut_secret = os.getenv("FT_CLIENT_ID") or "", os.getenv("FT_CLIENT_SECRET") or ""
+    cid, secret = brut_id.strip(), brut_secret.strip()   # un espace ou un retour à la ligne collé par erreur
     if not cid or not secret or cid.startswith("PAR_votre"):
         return None
+    # Diagnostic sans rien révéler : seulement la forme des codes.
+    print(f"francetravail  identifiant : {len(cid)} caractères, commence par PAR_ : {cid.startswith('PAR_')}"
+          f"{', espaces retirés' if cid != brut_id else ''} ; clé secrète : {len(secret)} caractères"
+          f"{', espaces retirés' if secret != brut_secret else ''}")
     r = requests.post(FT_TOKEN, timeout=DELAI, data={"grant_type": "client_credentials", "client_id": cid,
                       "client_secret": secret, "scope": "api_offresdemploiv2 o2dsoffre"})
     if not r.ok:   # ex. {"error":"invalid_scope"} : l'API « Offres d'emploi v2 » n'est pas ajoutée à l'application
