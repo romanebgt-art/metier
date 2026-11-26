@@ -32,7 +32,7 @@ jobs:
       - name: Collecter les offres des trois canaux
         env:
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
-          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY || secrets.ADZUNA_APP_ID_SECRET }}   # les deux noms sont acceptés
           LBA_API_KEY: ${{ secrets.LBA_API_KEY }}
           FT_CLIENT_ID: ${{ secrets.FT_CLIENT_ID }}
           FT_CLIENT_SECRET: ${{ secrets.FT_CLIENT_SECRET }}
