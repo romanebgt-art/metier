@@ -191,7 +191,8 @@ def france_travail(verifier=False):
         return None
     r = requests.post(FT_TOKEN, timeout=DELAI, data={"grant_type": "client_credentials", "client_id": cid,
                       "client_secret": secret, "scope": "api_offresdemploiv2 o2dsoffre"})
-    r.raise_for_status()
+    if not r.ok:   # ex. {"error":"invalid_scope"} : l'API « Offres d'emploi v2 » n'est pas ajoutée à l'application
+        raise RuntimeError(f"connexion refusée ({r.status_code}) : {r.text[:200]}")
     jeton = r.json()["access_token"]
     sortie, debut, maximum = [], 0, (150 if verifier else 1150)   # l'API ne donne pas plus de 1 150 offres par requête
     while debut < maximum:
