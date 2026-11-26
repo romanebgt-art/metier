@@ -166,7 +166,9 @@ def lba(verifier=False):
 
 
 # ---------------------------------------------------------------- France Travail
-FT_TOKEN = "https://entreprise.francetravail.fr/connexion/oauth2/access_token?realm=/partenaire"
+# Adresse d'authentification indiquée par la documentation francetravail.io (« Générer un access token »).
+# L'ancienne, entreprise.francetravail.fr, était en incident fin novembre 2026 (« invalid_client »).
+FT_TOKEN = "https://authentification-partenaire.francetravail.io/connexion/oauth2/access_token?realm=/partenaire"
 FT_SEARCH = "https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search"
 FT_SALAIRE = re.compile(r"^(annuel|mensuel|horaire)\s+de\s+(\d+(?:[.,]\d+)?)\s*euros(?:\s*à\s*(\d+(?:[.,]\d+)?)\s*euros)?", re.I)
 FT_CONTRAT = {"CDI": "CDI", "DDI": "CDI", "CDD": "CDD", "MIS": "Intérim", "SAI": "Saisonnier", "LIB": "Indépendant (non salarié)"}
