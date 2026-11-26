@@ -1,0 +1,34 @@
+# Chaque matin, récupère les nouvelles offres France Travail collectées par le robot du prof
+# (dépôt VincentFavarin/metier, mis à jour vers 7 h) et les ajoute à notre fork.
+# Nos propres fichiers (relevés Welcome to the Jungle / Adzuna, nos-offres/) ne sont pas touchés :
+# le prof ne modifie jamais ces fichiers, donc la fusion se fait sans conflit.
+name: sync-prof
+
+on:
+  schedule:
+    - cron: "30 6 * * *"      # 6 h 30 UTC = 8 h 30 à Paris l'hiver, 7 h 30 l'été (après le robot du prof)
+  workflow_dispatch:          # bouton « Run workflow » pour lancer à la main
+
+permissions:
+  contents: write             # pour enregistrer la mise à jour dans notre dépôt
+
+jobs:
+  synchroniser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Récupérer les données du prof et les fusionner
+        run: |
+          git config user.name "sync-bot"
+          git config user.email "actions@github.com"
+          git remote add prof https://github.com/VincentFavarin/metier.git
+          git fetch prof main
+          if git merge-base --is-ancestor prof/main HEAD; then
+            echo "Déjà à jour : rien à faire."
+          else
+            git merge --no-edit -m "sync : données du prof du $(date -u +%Y-%m-%d)" prof/main
+            git push
+          fi
