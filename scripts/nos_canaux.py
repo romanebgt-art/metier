@@ -96,6 +96,23 @@ ADZUNA_RECHERCHES = [   # (libellé, paramètres, nombre de pages de 50)
 ADZUNA_CONTRAT = {"permanent": "CDI", "contract": "CDD"}
 
 
+def adzuna_salaire(smin, smax, contrat):
+    """Adzuna mélange annuel, mensuel et horaire : on ramène tout en brut annuel (et en €/mois pour les stages).
+    < 100 € : horaire (× 1 607 h) ; < 4 000 € : mensuel (× 12) ; sinon annuel. Hors 4 000–250 000 €/an : ignoré."""
+    def annuel(v):
+        v = float(v)
+        return v * 1607 if v < 100 else v * 12 if v < 4000 else v
+    vals = [annuel(v) for v in (smin, smax) if v]
+    vals = [v for v in vals if 4000 <= v <= 250000]
+    if not vals:
+        return None, None, ""
+    if contrat == "Stage":                       # gratification : en € par mois, comme nos relevés à la main
+        vals = [v / 12 for v in vals]
+        vals = [v for v in vals if 300 <= v <= 3000]
+        return (round(min(vals)), round(max(vals)), "mois") if vals else (None, None, "")
+    return round(min(vals)), round(max(vals)), "an"
+
+
 def adzuna(verifier=False):
     cid, cle = os.getenv("ADZUNA_APP_ID"), os.getenv("ADZUNA_APP_KEY")
     if not cid or not cle:
@@ -113,14 +130,11 @@ def adzuna(verifier=False):
                 contrat = contrat_par_intitule(titre) or ADZUNA_CONTRAT.get(o.get("contract_type")) \
                     or ("CDI" if re.search(r"\bCDI\b", texte) else "CDD" if re.search(r"\bCDD\b", texte) else
                         "Alternance" if ALTERNANCE.search(texte) else "Stage" if STAGE.search(texte) else "non précisé")
+                if re.search(r"int[ée]rim", titre, re.I) and contrat in ("CDD", "CDI"):
+                    contrat = "Intérim"
                 # Adzuna estime parfois le salaire (salary_is_predicted = 1) : ce n'est pas un salaire affiché.
                 affiche = str(o.get("salary_is_predicted", "0")) == "0" and o.get("salary_min")
-                smin, smax = (o.get("salary_min"), o.get("salary_max")) if affiche else (None, None)
-                periode = ""
-                if smin:
-                    periode = "mois" if contrat == "Stage" and smin < 4000 else "an"
-                    if periode == "an" and smin < 4000:   # montant mensuel saisi comme annuel
-                        smin, smax = smin * 12, (smax or smin) * 12
+                smin, smax, periode = adzuna_salaire(o.get("salary_min"), o.get("salary_max"), contrat) if affiche else (None, None, "")
                 loc = o.get("location") or {}     # « Clermont-Ferrand, Puy-de-Dôme » : la ville avant la virgule
                 sortie.append(offre("Adzuna", libelle, titre, (o.get("company") or {}).get("display_name"),
                                     loc.get("display_name", ""), contrat, o.get("redirect_url"), smin, smax, periode,
