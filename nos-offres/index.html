@@ -17,6 +17,7 @@
     <a href="#lieux">Où</a>
     <a href="#evolution">Évolution</a>
     <a href="#france-travail">Comparer avec France Travail</a>
+    <a href="#clermont">Clermont : prévu / publié</a>
     <a href="#offres">Toutes les offres</a>
     <a href="#methode">Méthode et limites</a>
     <a href="../index.html">↗ Site du prof (France Travail)</a>
@@ -84,6 +85,16 @@
     <div class="carte"><h3>France Travail : les 10 départements qui ont le plus d'offres</h3><div class="zone"><canvas id="g-ft-dep"></canvas></div><p class="lecture" id="l-ft-dep"></p></div>
   </div>
 
+  <h2 id="clermont">Clermont : ce que les employeurs prévoient, ce qui est publié <small>— enquête BMO 2026</small></h2>
+  <p class="sous">L'enquête <b>Besoins en main-d'œuvre (BMO) 2026</b> de France Travail demande aux employeurs combien de personnes ils comptent recruter dans l'année, métier par métier. On met ces intentions face aux offres réellement en ligne dans le Puy-de-Dôme sur chacun des trois sites.</p>
+  <div class="grille">
+    <div class="carte defile"><h3>Projets de recrutement 2026 <small>— métiers marketing, communication et vente</small></h3><table id="t-bmo"></table>
+      <p class="note">Source : BMO 2026, fichier open data de France Travail (<code>data/bmo_2026_marketing.csv</code>). « Difficiles » = projets que l'employeur juge difficiles à pourvoir.</p></div>
+    <div class="carte"><h3>Marketing et communication à Clermont : prévu contre publié</h3><table id="t-prevu"></table><p class="lecture" id="l-prevu"></p></div>
+  </div>
+  <div class="carte defile" style="margin-top:16px"><h3>Les offres France Travail du Puy-de-Dôme classées dans les métiers du prof</h3><table id="t-ft63"></table>
+    <p class="note" id="n-ft63"></p></div>
+
   <h2 id="offres">Toutes les offres retenues</h2>
   <div class="carte">
     <label>Rechercher <input type="search" id="f-texte" placeholder="intitulé, entreprise, ville…"></label>
@@ -107,6 +118,7 @@
       <li>Le 29/09, seules <b>15 des 20</b> offres de la page CDI ont été relevées (lecture de la page tronquée) : les deux dates ne sont pas parfaitement comparables pour les CDI.</li>
       <li>Adzuna est un agrégateur : il reprend des offres d'autres sites, parfois en double, et son étiquette de contrat est parfois fausse.</li>
       <li>Peu d'offres affichent un salaire : les moyennes reposent sur de petits effectifs (indiqués à chaque fois).</li>
+      <li><b>BMO contre offres en ligne</b> : la BMO compte des <b>projets sur toute l'année 2026</b> (y compris ceux pourvus sans annonce : réseau, candidatures spontanées, cabinets), les offres sont un <b>stock à une date</b>. L'écart donne un ordre de grandeur, pas un « taux de publication ». Les familles BMO (nomenclature FAP) ne correspondent pas exactement aux codes ROME du prof. Les cases secrètes de la BMO (« * », trop peu de réponses) ne sont pas comptées.</li>
       <li>La comparaison avec France Travail met face à face <b>toutes</b> les offres actives des métiers suivis par le prof (plusieurs milliers, mises à jour chaque jour par son robot) et <b>nos échantillons</b> de quelques dizaines d'offres : les pourcentages se comparent, pas les volumes.</li>
     </ul>
   </div>

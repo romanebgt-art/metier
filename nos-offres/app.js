@@ -226,6 +226,44 @@ function rendreFT(F) {
     options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, title: { display: true, text: "Nombre d'offres" } } } } });
   const r63 = Object.entries(kd).sort((p, q) => q[1] - p[1]).findIndex(t => t[0] === '63') + 1;
   document.getElementById('l-ft-dep').innerHTML = `Paris (75) concentre <b>${pct(kd['75'] || 0, X.length)} %</b> des offres. Le Puy-de-Dôme (63) en compte <b>${nf(kd['63'] || 0)}</b>${r63 ? `, ${r63}<sup>e</sup> département` : ''}.`;
+  rendreClermont(F);
+}
+
+// ---- Clermont : BMO 2026 (intentions des employeurs) face aux offres en ligne ----
+let BMO = [];
+// Familles BMO retenues comme « marketing et communication » (les autres sont la vente).
+const BMO_MKT = ['R3X83', 'R4X90', 'U0X80', 'U0X90', 'U1X82'];
+// Même règle pour les trois sites : l'intitulé doit parler de marketing ou de communication.
+const VRAI_MKT = /marketing|communication|community|digital|num[ée]rique|chef de produit|e-commerce|\bweb\b|social media|marque|relations publiques|\bseo\b|influen/i;
+function rendreClermont(F) {
+  if (!BMO.length) return;
+  const b = (code, t) => BMO.find(r => r.code_metier_bmo === code && r.territoire === t) || {};
+  const num = v => +v || 0;
+  const codes = [...new Set(BMO.map(r => r.code_metier_bmo))].sort((p, q) => num(b(q, 'Bassin de Clermont-Ferrand').projets_recrutement) - num(b(p, 'Bassin de Clermont-Ferrand').projets_recrutement));
+  document.getElementById('t-bmo').innerHTML = `<tr><th>Métier (famille BMO)</th><th class="n">Bassin de Clermont</th><th class="n">dont difficiles</th><th class="n">Puy-de-Dôme</th></tr>` +
+    codes.map(c => { const r = b(c, 'Bassin de Clermont-Ferrand'), d = b(c, 'Puy-de-Dôme'), p = num(r.projets_recrutement);
+      return `<tr><td>${esc(r.metier_bmo)} ${BMO_MKT.includes(c) ? '' : '<span class="pastille">vente</span>'}</td><td class="n">${nf(p)}</td><td class="n">${p ? r.part_difficiles_pct + ' %' : '–'}</td><td class="n">${nf(num(d.projets_recrutement))}</td></tr>`; }).join('');
+
+  const prevu = BMO_MKT.reduce((s, c) => s + num(b(c, 'Bassin de Clermont-Ferrand').projets_recrutement), 0);
+  const diff = BMO_MKT.reduce((s, c) => s + num(b(c, 'Bassin de Clermont-Ferrand').dont_difficiles), 0);
+  const com = num(b('U0X80', 'Bassin de Clermont-Ferrand').projets_recrutement), comD = b('U0X80', 'Bassin de Clermont-Ferrand').part_difficiles_pct;
+  const ft63 = FT ? FT.offres.filter(o => o.dep === '63') : [];
+  const ftVrai = ft63.filter(o => VRAI_MKT.test(o.intitule));
+  const quand = F.date ? `le ${dateFr(F.date)}` : 'tous relevés';
+  const nous = c => { const l = RET.filter(o => o.canal === c && (!F.date || o.date_collecte === F.date)); const loc = l.filter(o => CLERMONT.test(o.lieu)); return [l.length, loc.length, loc.filter(o => VRAI_MKT.test(o.intitule)).length]; };
+  const [wn, wl, wv] = nous('Welcome to the Jungle'), [an, al, av] = nous('Adzuna');
+  document.getElementById('t-prevu').innerHTML = `<tr><th>Source</th><th class="n">Clermont / Puy-de-Dôme</th><th class="n">dont vraiment marketing / com</th></tr>` +
+    `<tr><td>Employeurs (BMO 2026) <small>— projets prévus sur l'année, bassin de Clermont</small></td><td class="n">${nf(prevu)}</td><td class="n">${nf(prevu)}</td></tr>` +
+    `<tr><td>France Travail <small>— offres actives le ${FT ? dateFr(FT.date) : '…'}, 23 métiers du prof</small></td><td class="n">${FT ? nf(ft63.length) : '…'}</td><td class="n">${FT ? nf(ftVrai.length) : '…'}</td></tr>` +
+    `<tr><td>Welcome to the Jungle <small>— ${quand}, sur ${wn} offres relevées</small></td><td class="n">${wl}</td><td class="n">${wv}</td></tr>` +
+    `<tr><td>Adzuna <small>— ${quand}, sur ${an} offres relevées</small></td><td class="n">${al}</td><td class="n">${av}</td></tr>`;
+  document.getElementById('l-prevu').innerHTML = `Les employeurs du bassin clermontois prévoient <b>${nf(prevu)} recrutements</b> en marketing et communication en 2026 (${pct(diff, prevu)} % jugés difficiles), dont <b>${nf(com)} assistants de communication</b> (${comD} % difficiles). ` +
+    (FT ? `Sur France Travail, seules <b>${ftVrai.length}</b> offres actives du Puy-de-Dôme ont un intitulé vraiment marketing ou communication. ` : '') +
+    `Welcome to the Jungle n'en a ${wv ? wv : 'aucune'} dans nos relevés : le site est tourné vers Paris. La plupart de ces recrutements ne passent donc par aucune annonce visible.`;
+
+  document.getElementById('t-ft63').innerHTML = `<tr><th>Intitulé</th><th>Code ROME (métier du prof)</th><th>Lieu</th><th>Contrat</th><th>Vraiment marketing / com ?</th></tr>` +
+    ft63.map(o => { const m = FT.metiers.find(x => x.code === o.rome); return `<tr><td><a href="${esc(o.url)}" target="_blank" rel="noopener">${esc(o.intitule)}</a></td><td>${esc(o.rome)} ${esc(m ? m.libelle : '')}</td><td>${esc(o.lieu)}</td><td>${esc(ftContrat(o))}</td><td>${VRAI_MKT.test(o.intitule) ? '✔ oui' : '✘ non'}</td></tr>`; }).join('');
+  document.getElementById('n-ft63').innerHTML = FT ? `${ft63.length} offres du Puy-de-Dôme sont rangées par France Travail dans les 23 métiers du prof, mais <b>${ft63.length - ftVrai.length}</b> n'ont rien de marketing dans leur intitulé (un médecin, des études de réseaux électriques… classés en « chargé d'études commerciales »). Le code métier choisi par l'employeur n'est pas toujours fiable : c'est une limite de la source France Travail. Règle appliquée aux trois sites : l'intitulé contient marketing, communication, digital, web, e-commerce, chef de produit, community, marque, relations publiques, SEO ou influence.` : '';
 }
 
 (async () => {
@@ -242,6 +280,7 @@ function rendreFT(F) {
     ['f-date', 'f-canal', 'f-contrat'].forEach(id => document.getElementById(id).addEventListener('change', rendre));
     document.getElementById('f-texte').addEventListener('input', rendre);
     document.getElementById('f-groupe').addEventListener('change', () => rendreFT(filtres()));
+    try { BMO = await charger(`${DATA}bmo_2026_marketing.csv`); } catch (e) { document.getElementById('l-prevu').textContent = `Données BMO indisponibles (${e.message}).`; }
     rendre();
     // France Travail : chargé après coup, pour que nos données s'affichent tout de suite.
     try {
