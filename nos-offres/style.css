@@ -39,6 +39,8 @@ th { color: var(--doux); font-weight: 600; white-space: nowrap; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 tr.total td { font-weight: 700; }
 .pastille { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; background: var(--fond); border: 1px solid var(--trait); white-space: nowrap; }
+/* Conditions de l'API Adzuna : le mot « Adzuna », en lien, d'au moins 116 × 23 px sur chaque annonce affichée. */
+.pastille.adzuna { min-width: 116px; min-height: 23px; line-height: 21px; box-sizing: border-box; text-align: center; color: var(--orange); font-weight: 600; text-decoration: none; }
 .compte { font-size: 13px; color: var(--doux); margin: 8px 0; }
 ul.limites li { margin: 6px 0; }
 footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--trait); font-size: 13px; color: var(--doux); }

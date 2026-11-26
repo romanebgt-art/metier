@@ -1,9 +1,14 @@
-// Lit data/offres_finales/ et data/offres_ecartees/ (une paire de fichiers par date listée
-// dans dates.json) et recalcule toute la page selon les filtres.
+// Lit data/offres_finales/ et data/offres_ecartees/ (nos relevés à la main, dates listées dans dates.json)
+// et data/auto/ (notre robot, chaque matin, dates listées dans dates_auto.json),
+// puis recalcule toute la page selon les filtres.
 const DATA = '../data/';
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
-const COUL = { 'Welcome to the Jungle': () => css('--bleu'), 'Adzuna': () => css('--orange') };
-const CANAUX = ['Welcome to the Jungle', 'Adzuna'];
+const COUL = { 'Welcome to the Jungle': () => css('--bleu'), 'Adzuna': () => css('--orange'),
+  'La bonne alternance': () => '#8e5bd6', 'France Travail': () => css('--vert') };
+const TOUS_CANAUX = ['Welcome to the Jungle', 'Adzuna', 'La bonne alternance', 'France Travail'];
+const COURT = { 'Welcome to the Jungle': 'WTTJ', 'Adzuna': 'Adzuna', 'La bonne alternance': 'LBA', 'France Travail': 'FT' };
+let CANAUX = TOUS_CANAUX;                    // réduit aux canaux présents dans les données, au chargement
+const AFFICHAGE_MAX = 500;                   // lignes du tableau « Toutes les offres » (le reste via la recherche)
 const nf = n => n.toLocaleString('fr-FR');
 const pct = (a, b) => b ? Math.round(100 * a / b) : 0;
 const eur = n => n == null ? '–' : Math.round(n).toLocaleString('fr-FR') + ' €';
@@ -92,14 +97,15 @@ function rendre() {
     `<tr><th>Étape</th><th class="n">Offres</th></tr><tr><td>Offres relevées ${quand}</td><td class="n">${nf(relevees)}</td></tr>` +
     Object.entries(raisons).sort((a, b) => b[1] - a[1]).map(([r, n]) => `<tr><td>− ${esc(r)}</td><td class="n">− ${n}</td></tr>`).join('') +
     `<tr class="total"><td>Offres retenues</td><td class="n">${nf(Rsc.length)}</td></tr>`;
-  const cs = CANAUX.filter(c => !F.canal || c === F.canal);
-  dessiner('g-retenues', { type: 'bar', data: { labels: cs, datasets: [
+  const cs = CANAUX.filter(c => !F.canal || c === F.canal);  dessiner('g-retenues', { type: 'bar', data: { labels: cs, datasets: [
     { label: 'Retenues', data: cs.map(c => Rsc.filter(o => o.canal === c).length), backgroundColor: css('--vert') },
     { label: 'Écartées', data: cs.map(c => E.filter(o => o.canal === c).length), backgroundColor: css('--gris') } ] },
     options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, title: { display: true, text: "Nombre d'offres" } } } } });
   const ad = c => [Rsc.filter(o => o.canal === c).length, E.filter(o => o.canal === c).length];
-  const [wr, we] = ad('Welcome to the Jungle'), [ar, ae] = ad('Adzuna');
-  document.getElementById('l-retenues').innerHTML = (!F.canal ? `On garde <b>${pct(wr, wr + we)} %</b> des offres de Welcome to the Jungle (${wr} sur ${wr + we}), mais seulement <b>${pct(ar, ar + ae)} %</b> de celles d'Adzuna (${ar} sur ${ar + ae}) : l'agrégateur ramène beaucoup d'offres hors marketing ou sans contrat.` : `${nf(Rsc.length)} offres retenues sur ${nf(relevees)} relevées.`);
+  const partsGardees = cs.map(c => { const [r, e] = ad(c); return [c, r, r + e]; }).filter(t => t[2]);
+  document.getElementById('l-retenues').innerHTML = partsGardees.length > 1
+    ? 'Part des offres gardées : ' + partsGardees.map(([c, r, t]) => `<b>${pct(r, t)} %</b> pour ${esc(c)} (${nf(r)} sur ${nf(t)})`).join(', ') + '. Les agrégateurs ramènent beaucoup d\'offres hors marketing ou sans contrat.'
+    : `${nf(Rsc.length)} offres retenues sur ${nf(relevees)} relevées.`;
 
   // Contrats
   const contrats = [...new Set(R.map(o => o.contrat))].sort((a, b) => R.filter(o => o.contrat === b).length - R.filter(o => o.contrat === a).length);
@@ -112,8 +118,10 @@ function rendre() {
     { label: 'Contrat indiqué', data: cs.map(c => { const [a, b] = connus(c); return pct(a, a + b); }), backgroundColor: css('--bleu') },
     { label: 'Non précisé', data: cs.map(c => { const [a, b] = connus(c); return pct(b, a + b); }), backgroundColor: css('--gris') } ] },
     options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, max: 100, title: { display: true, text: '% des offres relevées' } } } } });
-  const [ak, au] = connus('Adzuna');
-  document.getElementById('l-connu').innerHTML = (!F.canal || F.canal === 'Adzuna') && ak + au ? `Chez Adzuna, <b>${pct(au, ak + au)} %</b> des annonces ne précisent pas le contrat, même en lisant le texte complet (${au} sur ${ak + au}). Chez Welcome to the Jungle, il est toujours indiqué.` : 'Chez Welcome to the Jungle, le contrat est toujours indiqué sur l\'offre.';
+  const sansContrat = cs.map(c => { const [a, b] = connus(c); return [c, b, a + b]; }).filter(t => t[2]);
+  document.getElementById('l-connu').innerHTML = sansContrat.length
+    ? 'Annonces qui ne précisent pas le contrat : ' + sansContrat.map(([c, b, t]) => `<b>${pct(b, t)} %</b> chez ${esc(c)} (${nf(b)} sur ${nf(t)})`).join(', ') + '.'
+    : '';
 
   // Salaires
   const grp = [['Stage', o => o.contrat === 'Stage', '€ / mois'], ['Alternance', o => o.contrat === 'Alternance', '€ / an'], ['CDI et autres', o => !/stage|alternance/i.test(o.contrat), '€ / an']];
@@ -156,14 +164,17 @@ function rendre() {
 
   // Tableau des offres
   const T = R.filter(o => !F.texte || [o.intitule, o.entreprise, o.lieu, o.secteur].join(' ').toLowerCase().includes(F.texte));
-  document.getElementById('compte').textContent = `${T.length} offre${T.length > 1 ? 's' : ''} affichée${T.length > 1 ? 's' : ''}`;
+  document.getElementById('compte').textContent = `${nf(T.length)} offre${T.length > 1 ? 's' : ''}` +
+    (T.length > AFFICHAGE_MAX ? ` — les ${AFFICHAGE_MAX} premières sont affichées, utilisez la recherche ou les filtres pour les autres` : ` affichée${T.length > 1 ? 's' : ''}`);
+  // Adzuna exige que chaque annonce affichée porte le mot « Adzuna », en lien vers son site (conditions de l'API).
+  const pastille = c => c === 'Adzuna' ? '<a class="pastille adzuna" href="https://www.adzuna.fr" target="_blank" rel="noopener">Adzuna</a>' : `<span class="pastille">${esc(COURT[c] || c)}</span>`;
   document.getElementById('t-offres').innerHTML = `<tr><th>Date</th><th>Canal</th><th>Contrat</th><th>Intitulé</th><th>Entreprise</th><th>Lieu</th><th class="n">Salaire</th></tr>` +
-    T.map(o => { const m = milieu(o); return `<tr><td>${dateFr(o.date_collecte)}</td><td><span class="pastille">${o.canal === 'Adzuna' ? 'Adzuna' : 'WTTJ'}</span></td><td>${esc(o.contrat)}</td><td><a href="${esc(o.lien)}" target="_blank" rel="noopener">${esc(o.intitule)}</a></td><td>${esc(o.entreprise)}</td><td>${esc(o.lieu)}</td><td class="n">${m == null ? '' : eur(m) + (o.salaire_periode === 'mois' ? '/mois' : '/an')}</td></tr>`; }).join('');
+    T.slice(0, AFFICHAGE_MAX).map(o => { const m = milieu(o); return `<tr><td>${dateFr(o.date_collecte)}</td><td>${pastille(o.canal)}</td><td>${esc(o.contrat)}</td><td><a href="${esc(o.lien)}" target="_blank" rel="noopener">${esc(o.intitule)}</a></td><td>${esc(o.entreprise)}</td><td>${esc(o.lieu)}</td><td class="n">${m == null ? '' : eur(m) + (o.salaire_periode === 'mois' ? '/mois' : '/an')}</td></tr>`; }).join('');
 }
 
 // ---- France Travail : data/resume.json, produit chaque jour par le robot du prof ----
 let FT = null;
-const CLERMONT = /\b63\d{3}\b|clermont|aubi[eè]re|chamali[eè]res|gerzat|cournon|riom|issoire|beaumont|saint-beauzire|pont-du-ch[aâ]teau/i;
+const CLERMONT = /\b63\d{3}\b|puy-de-d[oô]me|clermont|aubi[eè]re|chamali[eè]res|gerzat|cournon|riom|issoire|beaumont|saint-beauzire|pont-du-ch[aâ]teau/i;
 function ftContrat(o) {
   if (o.nature === 'apprentissage' || o.nature === 'professionnalisation') return 'Alternance';
   if (o.nature === 'non_salarie') return 'Indépendant (non salarié)';
@@ -197,7 +208,7 @@ function rendreFT(F) {
     medCDI: mediane(cdiFT.map(ftMilieu)), nCDI: cdiFT.filter(o => o.smin != null).length,
     cdi: pct(cdiFT.length, X.length), alt: pct(X.filter(o => ftContrat(o) === 'Alternance').length, X.length),
     stage: 0, paris: pct(X.filter(o => o.dep === '75').length, X.length), pdd: X.filter(o => o.dep === '63').length };
-  const w = col('Welcome to the Jungle'), a = col('Adzuna');
+  const nos = CANAUX.map(c => [c, col(c)]).filter(([, v]) => v.rel > 0);   // seulement les canaux relevés à cette date
   const lignes = [
     ['Offres analysées', c => nf(c.n)],
     ['Contrat indiqué', c => c.connu + ' %'],
@@ -210,8 +221,9 @@ function rendreFT(F) {
     ['Offres dans le Puy-de-Dôme', c => nf(c.pdd)],
   ];
   document.getElementById('t-comparaison').innerHTML =
-    `<tr><th></th><th class="n">France Travail<br><small>${dateFr(FT.date)}, toutes les offres</small></th><th class="n">Welcome to the Jungle<br><small>${quand}, notre relevé</small></th><th class="n">Adzuna<br><small>${quand}, notre relevé</small></th></tr>` +
-    lignes.map(([t, f]) => `<tr><td>${t}</td><td class="n">${f(ft)}</td><td class="n">${f(w)}</td><td class="n">${f(a)}</td></tr>`).join('');
+    `<tr><th></th><th class="n">France Travail — robot du prof<br><small>${dateFr(FT.date)}, codes ROME</small></th>` +
+    nos.map(([c]) => `<th class="n">${esc(c)}${c === 'France Travail' ? ' — notre robot' : ''}<br><small>${quand}, ${c === 'Welcome to the Jungle' ? 'notre relevé' : c === 'France Travail' ? 'mot-clé « marketing »' : 'nos relevés'}</small></th>`).join('') + '</tr>' +
+    lignes.map(([t, f]) => `<tr><td>${t}</td><td class="n">${f(ft)}</td>${nos.map(([, v]) => `<td class="n">${f(v)}</td>`).join('')}</tr>`).join('');
   document.getElementById('n-comparaison').innerHTML = `Pour nos canaux, les parts sont calculées sur les offres retenues après nettoyage (sauf « contrat indiqué », calculé sur toutes les offres relevées). Les trois listes Welcome to the Jungle ne montrent chacune qu'un type de contrat : ses parts de CDI, de stages et d'alternances reflètent notre choix de pages, pas le marché. France Travail compte comme alternance les contrats d'apprentissage et de professionnalisation.`;
 
   const ks = {}; X.forEach(o => { const k = ftContrat(o); ks[k] = (ks[k] || 0) + 1; });
@@ -251,12 +263,13 @@ function rendreClermont(F) {
   const ftVrai = ft63.filter(o => VRAI_MKT.test(o.intitule));
   const quand = F.date ? `le ${dateFr(F.date)}` : 'tous relevés';
   const nous = c => { const l = RET.filter(o => o.canal === c && (!F.date || o.date_collecte === F.date)); const loc = l.filter(o => CLERMONT.test(o.lieu)); return [l.length, loc.length, loc.filter(o => VRAI_MKT.test(o.intitule)).length]; };
-  const [wn, wl, wv] = nous('Welcome to the Jungle'), [an, al, av] = nous('Adzuna');
+  const [, , wv] = nous('Welcome to the Jungle');
   document.getElementById('t-prevu').innerHTML = `<tr><th>Source</th><th class="n">Clermont / Puy-de-Dôme</th><th class="n">dont vraiment marketing / com</th></tr>` +
     `<tr><td>Employeurs (BMO 2026) <small>— projets prévus sur l'année, bassin de Clermont</small></td><td class="n">${nf(prevu)}</td><td class="n">${nf(prevu)}</td></tr>` +
     `<tr><td>France Travail <small>— offres actives le ${FT ? dateFr(FT.date) : '…'}, 23 métiers du prof</small></td><td class="n">${FT ? nf(ft63.length) : '…'}</td><td class="n">${FT ? nf(ftVrai.length) : '…'}</td></tr>` +
-    `<tr><td>Welcome to the Jungle <small>— ${quand}, sur ${wn} offres relevées</small></td><td class="n">${wl}</td><td class="n">${wv}</td></tr>` +
-    `<tr><td>Adzuna <small>— ${quand}, sur ${an} offres relevées</small></td><td class="n">${al}</td><td class="n">${av}</td></tr>`;
+    CANAUX.map(c => { const [n, l, v] = nous(c);
+      if (!n && !ECA.some(o => o.canal === c && (!F.date || o.date_collecte === F.date))) return '';
+      return `<tr><td>${esc(c)}${c === 'France Travail' ? ' (notre robot)' : ''} <small>— ${quand}, sur ${nf(n)} offres retenues</small></td><td class="n">${nf(l)}</td><td class="n">${nf(v)}</td></tr>`; }).join('');
   document.getElementById('l-prevu').innerHTML = `Les employeurs du bassin clermontois prévoient <b>${nf(prevu)} recrutements</b> en marketing et communication en 2026 (${pct(diff, prevu)} % jugés difficiles), dont <b>${nf(com)} assistants de communication</b> (${comD} % difficiles). ` +
     (FT ? `Sur France Travail, seules <b>${ftVrai.length}</b> offres actives du Puy-de-Dôme ont un intitulé vraiment marketing ou communication. ` : '') +
     `Welcome to the Jungle n'en a ${wv ? wv : 'aucune'} dans nos relevés : le site est tourné vers Paris. La plupart de ces recrutements ne passent donc par aucune annonce visible.`;
@@ -268,11 +281,19 @@ function rendreClermont(F) {
 
 (async () => {
   try {
-    DATES = await (await fetch('dates.json')).json();
-    for (const d of DATES) {
-      RET.push(...await charger(`${DATA}offres_finales/offres_finales_${d}.csv`));
-      ECA.push(...await charger(`${DATA}offres_ecartees/offres_ecartees_${d}.csv`));
-    }
+    const manuelles = await (await fetch('dates.json')).json();
+    let auto = [];
+    try { const r = await fetch('dates_auto.json'); if (r.ok) auto = await r.json(); } catch (e) { /* pas encore de robot */ }
+    // Tous les fichiers en parallèle : relevés à la main + jours du robot.
+    const lots = await Promise.all([
+      ...manuelles.flatMap(d => [charger(`${DATA}offres_finales/offres_finales_${d}.csv`), charger(`${DATA}offres_ecartees/offres_ecartees_${d}.csv`)]),
+      ...auto.flatMap(d => [charger(`${DATA}auto/offres_finales_${d}.csv`), charger(`${DATA}auto/offres_ecartees_${d}.csv`)]),
+    ]);
+    lots.forEach((l, i) => (i % 2 ? ECA : RET).push(...l));
+    DATES = [...new Set([...manuelles, ...auto])].sort();
+    CANAUX = TOUS_CANAUX.filter(c => RET.some(o => o.canal === c) || ECA.some(o => o.canal === c));
+    const fc = document.getElementById('f-canal');
+    fc.innerHTML = `<option value="">Tous les canaux</option>` + CANAUX.map(c => `<option>${esc(c)}</option>`).join('');
     const sd = document.getElementById('f-date');
     sd.innerHTML = DATES.slice().reverse().map(d => `<option value="${d}">${dateFr(d)}/${d.slice(0, 4)}</option>`).join('') + '<option value="">Toutes les dates</option>';
     const sc = document.getElementById('f-contrat');

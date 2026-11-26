@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Nos offres marketing — Welcome to the Jungle et Adzuna</title>
+<title>Nos offres marketing — quatre canaux</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="style.css">
 </head>
@@ -23,12 +23,12 @@
     <a href="../index.html">↗ Site du prof (France Travail)</a>
   </nav>
 
-  <h1>Nos offres marketing — deux canaux de plus que France Travail</h1>
-  <p class="sous">Offres relevées à la main sur <b>Welcome to the Jungle</b> et <b>Adzuna</b> par notre groupe (M1 Marketing Vente, IAE Clermont Auvergne), en complément des données France Travail du prof.</p>
+  <h1>Nos offres marketing — d'autres canaux que le robot du prof</h1>
+  <p class="sous">Chaque matin, notre robot (une Action GitHub) récupère les offres marketing d'<b>Adzuna</b>, de <b>La bonne alternance</b> et de <b>France Travail</b> par leurs API officielles. <b>Welcome to the Jungle</b> reste relevé à la main, car ses conditions d'utilisation interdisent les robots. Groupe M1 Marketing Vente, IAE Clermont Auvergne, en complément des données France Travail du prof.</p>
 
   <div class="barre">
     <label>Date du relevé <select id="f-date"></select></label>
-    <label>Canal <select id="f-canal"><option value="">Les deux canaux</option><option>Welcome to the Jungle</option><option>Adzuna</option></select></label>
+    <label>Canal <select id="f-canal"><option value="">Tous les canaux</option></select></label>
     <label>Contrat <select id="f-contrat"><option value="">Tous</option></select></label>
   </div>
   <div id="erreur"></div>
@@ -78,7 +78,7 @@
       <option value="Marketing,Digital,Frontière">Les 23 métiers suivis par le prof</option>
     </select></label>
   </div>
-  <div class="carte defile" style="margin-top:16px"><h3>Les trois canaux côte à côte</h3><table id="t-comparaison"></table>
+  <div class="carte defile" style="margin-top:16px"><h3>Les canaux côte à côte</h3><table id="t-comparaison"></table>
     <p class="note" id="n-comparaison"></p></div>
   <div class="grille" style="margin-top:16px">
     <div class="carte"><h3>France Travail : type de contrat</h3><div class="zone"><canvas id="g-ft-contrats"></canvas></div><p class="lecture" id="l-ft-contrats"></p></div>
@@ -106,7 +106,12 @@
   <div class="carte">
     <h3>Comment les offres ont été relevées</h3>
     <ul class="limites">
-      <li><b>À la main, sans compte</b>, sur les pages publiques des sites, en refusant les cookies non essentiels. Aucun robot : Welcome to the Jungle n'a pas d'accès officiel et interdit l'aspiration automatique.</li>
+      <li><b>Notre robot, chaque matin</b> (<code>scripts/nos_canaux.py</code>, lancé par <code>.github/workflows/nos-canaux.yml</code>), uniquement par des API officielles :
+        <b>Adzuna</b> (recherche « marketing » en France, 500 offres maximum, et autour de Clermont-Ferrand),
+        <b>La bonne alternance</b> (API de l'État, offres en alternance des 17 codes ROME marketing et digital du prof),
+        <b>France Travail</b> (mot-clé « marketing », 1 150 offres maximum par jour ; le robot du prof, lui, cherche par code ROME).
+        Les mêmes règles d'écart qu'à la main sont appliquées automatiquement, et l'intitulé doit parler de marketing ou de communication. La page charge les 7 derniers jours ; les jours plus anciens restent dans <code>data/auto/</code>.</li>
+      <li><b>Welcome to the Jungle, à la main, sans compte</b>, sur les pages publiques, en refusant les cookies non essentiels. Pas de robot : le site n'a pas d'accès officiel, et ses conditions d'utilisation interdisent tout script, robot ou extension de navigateur qui extrait ses données.</li>
       <li><b>Welcome to the Jungle</b> : 1<sup>re</sup> page de trois listes — « Emploi Marketing » (la page n'affiche que des CDI), « Stage Marketing Digital » (France entière) et « Alternance Marketing Paris » (Paris et 20 km autour : il n'existe pas de page Clermont).</li>
       <li><b>Adzuna</b> : 1<sup>re</sup> page de la recherche « marketing » en France et autour de Clermont-Ferrand. Chaque annonce a été ouverte pour lire le contrat écrit dans le texte.</li>
       <li><b>Règles d'écart</b> : contrat non précisé dans l'annonce, formation au lieu d'un emploi, poste non salarié, doublon, ou poste sans lien avec un master Marketing Vente (les postes de vente sont gardés s'ils visent un bac+3 ou plus, ou une formation en marketing ou commerce).</li>
@@ -116,14 +121,16 @@
       <li>Ce sont des <b>photos à une date</b>, sur quelques dizaines d'offres : un échantillon, pas un recensement (Adzuna annonce plus de 8 000 offres marketing).</li>
       <li>Les trois listes Welcome to the Jungle n'ont <b>pas le même périmètre</b> (CDI France, stages France, alternances Paris) : on ne compare pas les contrats entre eux comme s'ils venaient d'une même liste.</li>
       <li>Le 29/09, seules <b>15 des 20</b> offres de la page CDI ont été relevées (lecture de la page tronquée) : les deux dates ne sont pas parfaitement comparables pour les CDI.</li>
-      <li>Adzuna est un agrégateur : il reprend des offres d'autres sites, parfois en double, et son étiquette de contrat est parfois fausse.</li>
+      <li>Adzuna est un agrégateur : il reprend des offres d'autres sites, parfois en double, et son étiquette de contrat est parfois fausse. Les salaires qu'Adzuna <i>estime</i> lui-même ne sont pas comptés comme affichés.</li>
+      <li>Les canaux se recoupent : La bonne alternance et Adzuna reprennent une partie des offres de France Travail. Une même offre peut donc apparaître sur plusieurs canaux. On compare les parts d'un canal à l'autre, on n'additionne pas les volumes.</li>
+      <li>Chaque jour du robot est une photo du stock d'offres en ligne : la même offre revient d'un jour à l'autre. Sur « Toutes les dates », une offre est comptée une fois par jour où elle est en ligne.</li>
       <li>Peu d'offres affichent un salaire : les moyennes reposent sur de petits effectifs (indiqués à chaque fois).</li>
       <li><b>BMO contre offres en ligne</b> : la BMO compte des <b>projets sur toute l'année 2026</b> (y compris ceux pourvus sans annonce : réseau, candidatures spontanées, cabinets), les offres sont un <b>stock à une date</b>. L'écart donne un ordre de grandeur, pas un « taux de publication ». Les familles BMO (nomenclature FAP) ne correspondent pas exactement aux codes ROME du prof. Les cases secrètes de la BMO (« * », trop peu de réponses) ne sont pas comptées.</li>
       <li>La comparaison avec France Travail met face à face <b>toutes</b> les offres actives des métiers suivis par le prof (plusieurs milliers, mises à jour chaque jour par son robot) et <b>nos échantillons</b> de quelques dizaines d'offres : les pourcentages se comparent, pas les volumes.</li>
     </ul>
   </div>
 
-  <footer>Données : <code>data/offres_finales/</code> et <code>data/offres_ecartees/</code> (nos relevés), et <code>data/resume.json</code> (France Travail, collecté chaque jour par le robot du prof, V. Favarin). Graphiques recalculés dans votre navigateur à partir de ces fichiers.</footer>
+  <footer>Données : <code>data/offres_finales/</code> et <code>data/offres_ecartees/</code> (nos relevés à la main), <code>data/auto/</code> (notre robot : offres d'emploi <a href="https://www.adzuna.fr" target="_blank" rel="noopener">The Adzuna API</a>, <a href="https://labonnealternance.apprentissage.beta.gouv.fr" target="_blank" rel="noopener">La bonne alternance</a>, <a href="https://francetravail.io" target="_blank" rel="noopener">API France Travail</a>), et <code>data/resume.json</code> (France Travail, collecté chaque jour par le robot du prof, V. Favarin). Graphiques recalculés dans votre navigateur à partir de ces fichiers.</footer>
 </main>
 <script src="app.js"></script>
 </body>
