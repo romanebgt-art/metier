@@ -1,0 +1,53 @@
+# Notre robot : chaque matin, GitHub interroge Adzuna, La bonne alternance et France Travail
+# (API officielles), range les offres marketing dans data/auto/ et met à jour la page « Nos offres ».
+# Clés à mettre dans Settings -> Secrets and variables -> Actions :
+#   ADZUNA_APP_ID, ADZUNA_APP_KEY, LBA_API_KEY, FT_CLIENT_ID, FT_CLIENT_SECRET
+# Un canal dont la clé manque est simplement sauté.
+name: nos-canaux
+
+on:
+  schedule:
+    - cron: "15 6 * * *"      # 6 h 15 UTC = 7 h 15 à Paris l'hiver ; GitHub peut retarder de quelques heures
+  workflow_dispatch:          # bouton « Run workflow » pour lancer à la main
+
+permissions:
+  contents: write             # pour enregistrer les offres du jour dans le dépôt
+
+concurrency:
+  group: ecriture-depot       # évite de pousser en même temps qu'un autre robot
+  cancel-in-progress: false
+
+jobs:
+  collecter:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install requests python-dotenv
+
+      - name: Collecter les offres des trois canaux
+        env:
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          LBA_API_KEY: ${{ secrets.LBA_API_KEY }}
+          FT_CLIENT_ID: ${{ secrets.FT_CLIENT_ID }}
+          FT_CLIENT_SECRET: ${{ secrets.FT_CLIENT_SECRET }}
+        run: python scripts/nos_canaux.py
+
+      - name: Enregistrer les offres du jour (commit + push)
+        if: always()              # même si un canal a échoué, on garde ceux qui ont répondu
+        run: |
+          git config user.name "nos-canaux-bot"
+          git config user.email "actions@github.com"
+          git add data/auto nos-offres/dates.json nos-offres/dates_auto.json
+          if git diff --cached --quiet; then echo "rien de nouveau"; exit 0; fi
+          git commit -m "nos canaux : offres du $(date -u +%Y-%m-%d)"
+          for essai in 1 2 3; do
+            git pull --rebase && git push && exit 0
+            sleep 20
+          done
+          exit 1
